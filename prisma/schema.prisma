@@ -1,0 +1,31 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Device {
+  id        String   @id @db.VarChar(64)
+  name      String   @db.VarChar(120)
+  location  String?  @db.VarChar(120)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  metrics   Metric[]
+
+  @@map("devices")
+}
+
+model Metric {
+  id          BigInt   @id @default(autoincrement()) @db.BigInt
+  deviceId    String   @map("device_id") @db.VarChar(64)
+  power       Float    @db.DoublePrecision
+  temperature Float    @db.DoublePrecision
+  recordedAt  DateTime @map("recorded_at") @db.Timestamptz(3)
+  receivedAt  DateTime @default(now()) @map("received_at") @db.Timestamptz(3)
+  device      Device   @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+
+  @@index([deviceId, recordedAt(sort: Desc)], map: "metrics_device_recorded_at_desc_idx")
+  @@map("metrics")
+}
