@@ -14,6 +14,7 @@ import {
 import { formatTimestamp } from "@/lib/telemetry/formatters";
 
 import { DashboardError, DashboardLoading } from "./dashboard-feedback";
+import { DeviceDetailPane } from "./device-detail-pane";
 import { DeviceFilters } from "./device-filters";
 import { DeviceTable } from "./device-table";
 import { FleetSummary } from "./fleet-summary";
@@ -48,6 +49,9 @@ export function TelemetryDashboard() {
   const [query, setQuery] = useState("");
   const [locationFilter, setLocationFilter] =
     useState<LocationFilterValue>(ALL_LOCATIONS);
+  const [explicitSelectedDeviceId, setExplicitSelectedDeviceId] = useState<
+    string | null
+  >(null);
 
   const devices = fleet.data?.data.devices ?? EMPTY_DEVICES;
   const summary = useMemo(() => calculateFleetSummary(devices), [devices]);
@@ -61,6 +65,16 @@ export function TelemetryDashboard() {
   );
   const filtersAreActive =
     query.trim().length > 0 || locationFilter !== ALL_LOCATIONS;
+  const selectedDevice = useMemo(
+    () =>
+      devices.find((device) => device.id === explicitSelectedDeviceId) ??
+      devices[0] ??
+      null,
+    [devices, explicitSelectedDeviceId],
+  );
+  const isSelectionFilteredOut =
+    selectedDevice !== null &&
+    !visibleDevices.some((device) => device.id === selectedDevice.id);
 
   function clearFilters() {
     setQuery("");
@@ -81,39 +95,48 @@ export function TelemetryDashboard() {
           <div className={styles.workspace}>
             <FleetSummary summary={summary} />
 
-            <section
-              className={styles.fleetPanel}
-              aria-labelledby="device-inventory-title"
-            >
-              <div className={styles.panelHeader}>
-                <div>
-                  <h2 id="device-inventory-title">Device inventory</h2>
-                  <p>Latest known readings from the fleet API.</p>
+            <div className={styles.operationsGrid}>
+              <section
+                className={styles.fleetPanel}
+                aria-labelledby="device-inventory-title"
+              >
+                <div className={styles.panelHeader}>
+                  <div>
+                    <h2 id="device-inventory-title">Device inventory</h2>
+                    <p>Latest known readings from the fleet API.</p>
+                  </div>
+                  <span className={styles.deviceTotal}>
+                    {devices.length.toLocaleString("en-US")} registered
+                  </span>
                 </div>
-                <span className={styles.deviceTotal}>
-                  {devices.length.toLocaleString("en-US")} registered
-                </span>
-              </div>
 
-              {devices.length > 0 ? (
-                <DeviceFilters
-                  query={query}
-                  locationFilter={locationFilter}
-                  locationOptions={locationOptions}
-                  visibleCount={visibleDevices.length}
-                  totalCount={devices.length}
-                  filtersAreActive={filtersAreActive}
-                  onQueryChange={setQuery}
-                  onLocationChange={setLocationFilter}
-                  onClear={clearFilters}
+                {devices.length > 0 ? (
+                  <DeviceFilters
+                    query={query}
+                    locationFilter={locationFilter}
+                    locationOptions={locationOptions}
+                    visibleCount={visibleDevices.length}
+                    totalCount={devices.length}
+                    filtersAreActive={filtersAreActive}
+                    onQueryChange={setQuery}
+                    onLocationChange={setLocationFilter}
+                    onClear={clearFilters}
+                  />
+                ) : null}
+
+                <DeviceTable
+                  devices={visibleDevices}
+                  totalDeviceCount={devices.length}
+                  selectedDeviceId={selectedDevice?.id ?? null}
+                  onSelectDevice={setExplicitSelectedDeviceId}
                 />
-              ) : null}
+              </section>
 
-              <DeviceTable
-                devices={visibleDevices}
-                totalDeviceCount={devices.length}
+              <DeviceDetailPane
+                device={selectedDevice}
+                isSelectionFilteredOut={isSelectionFilteredOut}
               />
-            </section>
+            </div>
           </div>
         ) : null}
       </div>

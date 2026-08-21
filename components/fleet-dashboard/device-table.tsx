@@ -11,9 +11,13 @@ import styles from "./telemetry-dashboard.module.css";
 export function DeviceTable({
   devices,
   totalDeviceCount,
+  selectedDeviceId,
+  onSelectDevice,
 }: {
   devices: FleetDeviceDto[];
   totalDeviceCount: number;
+  selectedDeviceId: string | null;
+  onSelectDevice: (deviceId: string) => void;
 }) {
   if (totalDeviceCount === 0) {
     return (
@@ -60,14 +64,31 @@ export function DeviceTable({
         <tbody>
           {devices.map((device) => {
             const metric = device.latestMetric;
+            const isSelected = device.id === selectedDeviceId;
 
             return (
-              <tr key={device.id}>
+              <tr
+                key={device.id}
+                className={isSelected ? styles.selectedDeviceRow : undefined}
+                data-selected={isSelected ? "true" : undefined}
+                onClick={() => onSelectDevice(device.id)}
+              >
                 <th scope="row">
-                  <span className={styles.deviceName} title={device.name}>
-                    {device.name}
-                  </span>
-                  <span className={styles.deviceId}>{device.id}</span>
+                  <button
+                    type="button"
+                    className={styles.deviceSelectButton}
+                    aria-controls="device-detail-pane"
+                    aria-current={isSelected ? "true" : undefined}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onSelectDevice(device.id);
+                    }}
+                  >
+                    <span className={styles.deviceName} title={device.name}>
+                      {device.name}
+                    </span>
+                    <span className={styles.deviceId}>{device.id}</span>
+                  </button>
                 </th>
                 <td>{getDeviceLocationLabel(device.location)}</td>
                 {metric ? (

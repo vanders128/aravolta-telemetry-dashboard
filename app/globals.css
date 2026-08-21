@@ -6,6 +6,7 @@
   --surface-summary: #fbfeff;
   --surface-table-header: #f1f7f9;
   --surface-row-hover: #f0f7f9;
+  --surface-row-selected: #e8f4f7;
   --surface-loading: #eaf1f4;
   --border-subtle: #e3e8ed;
   --border-default: #d7dee5;
@@ -19,6 +20,9 @@
   --accent-strong: #205f7b;
   --focus-ring: #34718c;
   --focus-halo: rgb(52 113 140 / 20%);
+  --chart-grid: #dce6ea;
+  --chart-raw: #2c7897;
+  --chart-average: #18566f;
   color-scheme: light;
 }
 

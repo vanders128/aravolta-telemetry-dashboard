@@ -17,6 +17,22 @@ vi.mock("@/hooks/use-fleet-devices", () => ({
   useFleetDevices: vi.fn(),
 }));
 
+vi.mock("@/components/fleet-dashboard/device-detail-pane", () => ({
+  DeviceDetailPane: ({
+    device,
+    isSelectionFilteredOut,
+  }: {
+    device: FleetDeviceDto | null;
+    isSelectionFilteredOut: boolean;
+  }) => (
+    <aside
+      data-testid="device-detail"
+      data-device-id={device?.id ?? ""}
+      data-filtered-out={String(isSelectionFilteredOut)}
+    />
+  ),
+}));
+
 const useFleetDevicesMock = vi.mocked(useFleetDevices);
 const retry = vi.fn();
 
@@ -205,5 +221,66 @@ describe("TelemetryDashboard", () => {
     expect(screen.getByText("Alpha rack")).toBeInTheDocument();
     expect(screen.getByText("Beta rack")).toBeInTheDocument();
     expect(screen.getByText("Gamma rack")).toBeInTheDocument();
+  });
+
+  it("selects the first device initially and changes selection accessibly", async () => {
+    const user = userEvent.setup();
+    mockSuccess([
+      device("rack-a1", { name: "Alpha rack" }),
+      device("rack-b1", { name: "Beta rack" }),
+    ]);
+
+    render(<TelemetryDashboard />);
+
+    const table = screen.getByRole("table");
+    const alphaButton = within(table).getByRole("button", {
+      name: /Alpha rack/i,
+    });
+    const betaButton = within(table).getByRole("button", {
+      name: /Beta rack/i,
+    });
+    const detail = screen.getByTestId("device-detail");
+
+    expect(alphaButton).toHaveAttribute("aria-current", "true");
+    expect(alphaButton.closest("tr")).toHaveAttribute("data-selected", "true");
+    expect(detail).toHaveAttribute("data-device-id", "rack-a1");
+
+    betaButton.focus();
+    await user.keyboard("{Enter}");
+
+    expect(alphaButton).not.toHaveAttribute("aria-current");
+    expect(betaButton).toHaveAttribute("aria-current", "true");
+    expect(betaButton.closest("tr")).toHaveAttribute("data-selected", "true");
+    expect(detail).toHaveAttribute("data-device-id", "rack-b1");
+  });
+
+  it("retains a selected device when filters hide its row", async () => {
+    const user = userEvent.setup();
+    mockSuccess([
+      device("rack-a1", { name: "Alpha rack", location: "North plant" }),
+      device("rack-b1", { name: "Beta rack", location: "South plant" }),
+    ]);
+
+    render(<TelemetryDashboard />);
+
+    await user.click(
+      within(screen.getByRole("table")).getByRole("button", {
+        name: /Beta rack/i,
+      }),
+    );
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Location" }),
+      "location:North plant",
+    );
+
+    expect(screen.queryByText("Beta rack")).not.toBeInTheDocument();
+    expect(screen.getByTestId("device-detail")).toHaveAttribute(
+      "data-device-id",
+      "rack-b1",
+    );
+    expect(screen.getByTestId("device-detail")).toHaveAttribute(
+      "data-filtered-out",
+      "true",
+    );
   });
 });

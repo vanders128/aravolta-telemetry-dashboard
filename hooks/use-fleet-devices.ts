@@ -3,10 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 
 import type {
-  FleetDeviceDto,
   FleetDevicesResponse,
-  MetricDto,
 } from "@/lib/telemetry/contracts";
+import { isFleetDevicesResponse } from "@/lib/telemetry/contract-validation";
 
 type FleetDevicesState =
   | { status: "loading"; data: null; error: null }
@@ -18,47 +17,6 @@ const INITIAL_STATE: FleetDevicesState = {
   data: null,
   error: null,
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object";
-}
-
-function isMetricDto(value: unknown): value is MetricDto {
-  return (
-    isRecord(value) &&
-    typeof value.id === "string" &&
-    typeof value.deviceId === "string" &&
-    typeof value.power === "number" &&
-    Number.isFinite(value.power) &&
-    typeof value.temperature === "number" &&
-    Number.isFinite(value.temperature) &&
-    typeof value.recordedAt === "string" &&
-    typeof value.receivedAt === "string"
-  );
-}
-
-function isFleetDeviceDto(value: unknown): value is FleetDeviceDto {
-  return (
-    isRecord(value) &&
-    typeof value.id === "string" &&
-    typeof value.name === "string" &&
-    (value.location === null || typeof value.location === "string") &&
-    typeof value.createdAt === "string" &&
-    (value.latestMetric === null || isMetricDto(value.latestMetric))
-  );
-}
-
-function isFleetDevicesResponse(value: unknown): value is FleetDevicesResponse {
-  if (!isRecord(value) || !isRecord(value.data) || !isRecord(value.meta)) {
-    return false;
-  }
-
-  return (
-    Array.isArray(value.data.devices) &&
-    value.data.devices.every(isFleetDeviceDto) &&
-    typeof value.meta.asOf === "string"
-  );
-}
 
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";

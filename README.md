@@ -17,8 +17,9 @@ The project currently includes:
 - A validated telemetry ingestion endpoint backed by durable PostgreSQL writes
 - Device, recent-metric, and full live-snapshot query endpoints
 - A responsive fleet dashboard backed exclusively by the device query API
+- A selected-device workspace with polling and separate power and temperature charts
 
-Selected-device live charts, alerting, and the complete architecture documentation will be added incrementally in subsequent phases.
+Alerting and the complete architecture documentation will be added incrementally in subsequent phases.
 
 ## Local prerequisites
 
@@ -81,6 +82,8 @@ Alert and reporting-state fields will be added with the centralized demonstratio
 ## Fleet dashboard
 
 The fleet view fetches `GET /api/devices` once when it mounts and provides a manual retry after failures. Its summary cards cover the complete returned fleet: total devices, devices with a latest reading, the sum of latest power readings, and the average of latest temperatures. Search matches device name, ID, and location; the location filter options are derived from the response. Devices without telemetry remain visible but are excluded from power and temperature calculations.
+
+The first fleet device is selected initially, and choosing another row updates a persistent device-detail workspace. The client fetches `GET /api/devices/:id/live` immediately and then approximately every 15 seconds. Each successful response replaces the prior chart snapshot in full, using the server's 60-second `recordedAt` event-time window; snapshots are never merged into an accumulating client history. At the chart boundary, `recordedAt` maps explicitly to the assignment-facing `timestamp` field. Separate power and temperature charts show raw readings and an inclusive, time-based 10-second rolling average, so irregular reporting intervals are handled without assuming a fixed sample count.
 
 The assignment does not define telemetry units. For demonstration, the UI presents power as watts and temperature as degrees Fahrenheit based on the sample values. Those assumptions live only in `lib/telemetry/display-config.ts`; they are not encoded in the database or API domain model.
 
