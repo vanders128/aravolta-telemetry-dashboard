@@ -1,5 +1,5 @@
 import type { FleetSummary as FleetSummaryValues } from "@/lib/telemetry/fleet-dashboard";
-import { formatPower, formatTemperature } from "@/lib/telemetry/formatters";
+import { formatPower } from "@/lib/telemetry/formatters";
 
 import styles from "./telemetry-dashboard.module.css";
 
@@ -11,25 +11,27 @@ export function FleetSummary({ summary }: { summary: FleetSummaryValues }) {
       detail: "Registered assets",
     },
     {
-      label: "Devices with telemetry",
-      value: summary.devicesWithTelemetry.toLocaleString("en-US"),
-      detail: "Has a latest reading",
+      label: "Normal / current",
+      value: summary.normalCurrent.toLocaleString("en-US"),
+      detail: "Current and within thresholds",
+    },
+    {
+      label: "Needs attention",
+      value: summary.needsAttention.toLocaleString("en-US"),
+      detail: "Warning or critical",
+    },
+    {
+      label: "Stale / no data",
+      value: summary.staleOrNoData.toLocaleString("en-US"),
+      detail: "Not current",
     },
     {
       label: "Current aggregate power",
       value:
-        summary.aggregatePower === null
+        summary.currentAggregatePower === null
           ? "No data"
-          : formatPower(summary.aggregatePower),
-      detail: "Sum of latest readings",
-    },
-    {
-      label: "Average current temperature",
-      value:
-        summary.averageTemperature === null
-          ? "No data"
-          : formatTemperature(summary.averageTemperature),
-      detail: "Latest readings only",
+          : formatPower(summary.currentAggregatePower),
+      detail: "Current telemetry only",
     },
   ];
 

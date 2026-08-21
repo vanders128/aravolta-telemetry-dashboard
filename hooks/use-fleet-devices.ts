@@ -8,14 +8,36 @@ import type {
 import { isFleetDevicesResponse } from "@/lib/telemetry/contract-validation";
 
 type FleetDevicesState =
-  | { status: "loading"; data: null; error: null }
-  | { status: "success"; data: FleetDevicesResponse; error: null }
-  | { status: "error"; data: null; error: string };
+  | {
+      status: "loading";
+      data: null;
+      error: null;
+      refreshError: null;
+      isRefreshing: false;
+    }
+  | {
+      status: "success";
+      data: FleetDevicesResponse;
+      error: null;
+      refreshError: string | null;
+      isRefreshing: boolean;
+    }
+  | {
+      status: "error";
+      data: null;
+      error: string;
+      refreshError: null;
+      isRefreshing: false;
+    };
+
+export const FLEET_POLL_INTERVAL_MS = 15_000;
 
 const INITIAL_STATE: FleetDevicesState = {
   status: "loading",
   data: null,
   error: null,
+  refreshError: null,
+  isRefreshing: false,
 };
 
 function isAbortError(error: unknown): boolean {
@@ -29,9 +51,20 @@ export function useFleetDevices() {
   useEffect(() => {
     const controller = new AbortController();
     let isActive = true;
+    let pollTimeout: ReturnType<typeof setTimeout> | null = null;
+    let requestInFlight = false;
 
     async function loadFleet() {
-      setState(INITIAL_STATE);
+      if (!isActive || requestInFlight) {
+        return;
+      }
+
+      requestInFlight = true;
+      setState((current) =>
+        current.data === null
+          ? current
+          : { ...current, isRefreshing: true, refreshError: null },
+      );
 
       try {
         const response = await fetch("/api/devices", {
@@ -51,18 +84,48 @@ export function useFleetDevices() {
         }
 
         if (isActive) {
-          setState({ status: "success", data: payload, error: null });
+          setState({
+            status: "success",
+            data: payload,
+            error: null,
+            refreshError: null,
+            isRefreshing: false,
+          });
         }
       } catch (error) {
         if (!isActive || isAbortError(error)) {
           return;
         }
 
-        setState({
-          status: "error",
-          data: null,
-          error: "Unable to load fleet telemetry. Try the request again.",
+        setState((current) => {
+          if (current.data !== null) {
+            return {
+              ...current,
+              status: "success",
+              error: null,
+              refreshError:
+                "Fleet refresh failed. Showing the last successful snapshot.",
+              isRefreshing: false,
+            };
+          }
+
+          return {
+            status: "error",
+            data: null,
+            error: "Unable to load fleet telemetry. Try the request again.",
+            refreshError: null,
+            isRefreshing: false,
+          };
         });
+      } finally {
+        requestInFlight = false;
+
+        if (isActive) {
+          pollTimeout = setTimeout(
+            () => void loadFleet(),
+            FLEET_POLL_INTERVAL_MS,
+          );
+        }
       }
     }
 
@@ -70,11 +133,15 @@ export function useFleetDevices() {
 
     return () => {
       isActive = false;
+      if (pollTimeout !== null) {
+        clearTimeout(pollTimeout);
+      }
       controller.abort();
     };
   }, [requestVersion]);
 
   const retry = useCallback(() => {
+    setState(INITIAL_STATE);
     setRequestVersion((version) => version + 1);
   }, []);
 

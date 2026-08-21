@@ -16,23 +16,34 @@ import {
   LIVE_TELEMETRY_WINDOW_SECONDS,
   prepareLiveTelemetryPoints,
 } from "@/lib/telemetry/live-telemetry";
+import {
+  evaluateTelemetry,
+  FRESHNESS_LABELS,
+  type TelemetryEvaluation,
+} from "@/lib/telemetry/operator-state";
 
 import styles from "./telemetry-dashboard.module.css";
 import { TelemetryChart } from "./telemetry-chart";
+import { TelemetryStatus } from "./telemetry-status";
 
 function DetailReadings({
   latestMetric,
+  evaluation,
 }: {
   latestMetric: FleetDeviceDto["latestMetric"];
+  evaluation: TelemetryEvaluation;
 }) {
+  const readingQualifier =
+    evaluation.freshness === "stale" ? "Last-known" : "Current";
+
   return (
-    <dl className={styles.detailReadings} aria-label="Latest known readings">
+    <dl className={styles.detailReadings} aria-label="Device readings">
       <div>
-        <dt>Latest known power</dt>
+        <dt>{latestMetric ? `${readingQualifier} power` : "Power"}</dt>
         <dd>{latestMetric ? formatPower(latestMetric.power) : "—"}</dd>
       </div>
       <div>
-        <dt>Latest known temperature</dt>
+        <dt>{latestMetric ? `${readingQualifier} temperature` : "Temperature"}</dt>
         <dd>
           {latestMetric ? formatTemperature(latestMetric.temperature) : "—"}
         </dd>
@@ -66,6 +77,13 @@ export function DeviceDetailPane({
   const live = useLiveTelemetry(device?.id ?? null);
   const snapshot = live.data;
   const latestMetric = snapshot?.data.latestMetric ?? null;
+  const evaluation = useMemo(
+    () =>
+      snapshot
+        ? evaluateTelemetry(snapshot.data.latestMetric, snapshot.meta.asOf)
+        : null,
+    [snapshot],
+  );
   const chartPoints = useMemo(() => {
     if (snapshot === null) {
       return [];
@@ -152,9 +170,36 @@ export function DeviceDetailPane({
         </div>
       ) : null}
 
-      {live.status === "success" && snapshot ? (
+      {live.status === "success" && snapshot && evaluation ? (
         <div className={styles.detailContent}>
-          <DetailReadings latestMetric={latestMetric} />
+          <div
+            className={styles.detailStatus}
+            data-status={evaluation.state}
+          >
+            <div>
+              <span className={styles.detailStatusLabel}>Operator state</span>
+              <TelemetryStatus evaluation={evaluation} />
+            </div>
+            <div>
+              <span className={styles.detailStatusLabel}>Freshness</span>
+              <strong>{FRESHNESS_LABELS[evaluation.freshness]}</strong>
+            </div>
+            {["warning", "critical", "stale"].includes(evaluation.state) ? (
+              <p>{evaluation.reason}</p>
+            ) : null}
+          </div>
+
+          {evaluation.freshness === "stale" ? (
+            <p className={styles.staleContext}>
+              Displaying last-known measurements; this device has not reported
+              current telemetry.
+            </p>
+          ) : null}
+
+          <DetailReadings
+            latestMetric={latestMetric}
+            evaluation={evaluation}
+          />
 
           <div className={styles.snapshotMeta}>
             <span>

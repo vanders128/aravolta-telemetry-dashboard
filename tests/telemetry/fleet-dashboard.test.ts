@@ -3,11 +3,14 @@ import { describe, expect, it } from "vitest";
 import type { FleetDeviceDto, MetricDto } from "@/lib/telemetry/contracts";
 import {
   ALL_LOCATIONS,
+  ALL_STATUSES,
   UNASSIGNED_LOCATION,
   calculateFleetSummary,
   filterFleetDevices,
   getLocationOptions,
 } from "@/lib/telemetry/fleet-dashboard";
+
+const AS_OF = "2025-10-09T14:00:00.000Z";
 
 function metric(overrides: Partial<MetricDto> = {}): MetricDto {
   return {
@@ -36,7 +39,7 @@ function device(
 }
 
 describe("fleet dashboard derivations", () => {
-  it("summarizes the full fleet and preserves legitimate zero readings", () => {
+  it("summarizes operator states and preserves legitimate zero readings", () => {
     const devices = [
       device("rack-a1"),
       device("rack-b1", {
@@ -50,25 +53,35 @@ describe("fleet dashboard derivations", () => {
       device("rack-c1", { latestMetric: null }),
     ];
 
-    expect(calculateFleetSummary(devices)).toEqual({
+    expect(calculateFleetSummary(devices, AS_OF)).toEqual({
       totalDevices: 3,
-      devicesWithTelemetry: 2,
-      aggregatePower: 600,
-      averageTemperature: 40,
+      normalCurrent: 2,
+      needsAttention: 0,
+      staleOrNoData: 1,
+      currentAggregatePower: 600,
     });
   });
 
-  it("uses null rather than a misleading zero or NaN when no telemetry exists", () => {
-    const summary = calculateFleetSummary([
-      device("rack-a1", { latestMetric: null }),
-      device("rack-b1", { latestMetric: null }),
-    ]);
+  it("uses null rather than a misleading zero when no current telemetry exists", () => {
+    const summary = calculateFleetSummary(
+      [
+        device("rack-a1", { latestMetric: null }),
+        device("rack-b1", {
+          latestMetric: metric({
+            deviceId: "rack-b1",
+            recordedAt: "2025-10-09T13:59:00.000Z",
+          }),
+        }),
+      ],
+      AS_OF,
+    );
 
     expect(summary).toEqual({
       totalDevices: 2,
-      devicesWithTelemetry: 0,
-      aggregatePower: null,
-      averageTemperature: null,
+      normalCurrent: 0,
+      needsAttention: 0,
+      staleOrNoData: 2,
+      currentAggregatePower: null,
     });
   });
 
@@ -107,5 +120,97 @@ describe("fleet dashboard derivations", () => {
     expect(filterFleetDevices(devices, "", UNASSIGNED_LOCATION)).toEqual([
       expect.objectContaining({ id: "rack-c1" }),
     ]);
+  });
+
+  it("calculates attention counts and excludes stale power from aggregate", () => {
+    const devices = [
+      device("normal"),
+      device("warning", {
+        latestMetric: metric({ deviceId: "warning", power: 1_000 }),
+      }),
+      device("critical", {
+        latestMetric: metric({ deviceId: "critical", temperature: 95 }),
+      }),
+      device("stale", {
+        latestMetric: metric({
+          deviceId: "stale",
+          power: 1_300,
+          recordedAt: "2025-10-09T13:59:00.000Z",
+        }),
+      }),
+      device("no-data", { latestMetric: null }),
+    ];
+
+    expect(calculateFleetSummary(devices, AS_OF)).toEqual({
+      totalDevices: 5,
+      normalCurrent: 1,
+      needsAttention: 2,
+      staleOrNoData: 2,
+      currentAggregatePower: 2_200,
+    });
+  });
+
+  it.each(["normal", "warning", "critical", "stale", "no-data"] as const)(
+    "filters status %s",
+    (status) => {
+      const devices = [
+        device("normal"),
+        device("warning", {
+          latestMetric: metric({ deviceId: "warning", power: 1_000 }),
+        }),
+        device("critical", {
+          latestMetric: metric({ deviceId: "critical", temperature: 95 }),
+        }),
+        device("stale", {
+          latestMetric: metric({
+            deviceId: "stale",
+            recordedAt: "2025-10-09T13:59:00.000Z",
+          }),
+        }),
+        device("no-data", { latestMetric: null }),
+      ];
+
+      expect(
+        filterFleetDevices(devices, "", ALL_LOCATIONS, status, AS_OF),
+      ).toEqual([expect.objectContaining({ id: status })]);
+    },
+  );
+
+  it("combines search, location, and status filters with AND semantics", () => {
+    const devices = [
+      device("north-warning", {
+        name: "Alpha UPS",
+        location: "North plant",
+        latestMetric: metric({ deviceId: "north-warning", power: 1_000 }),
+      }),
+      device("south-warning", {
+        name: "Alpha UPS",
+        location: "South plant",
+        latestMetric: metric({ deviceId: "south-warning", power: 1_000 }),
+      }),
+      device("north-normal", {
+        name: "Alpha rack",
+        location: "North plant",
+      }),
+    ];
+
+    expect(
+      filterFleetDevices(
+        devices,
+        "alpha",
+        "location:North plant",
+        "warning",
+        AS_OF,
+      ),
+    ).toEqual([expect.objectContaining({ id: "north-warning" })]);
+    expect(
+      filterFleetDevices(
+        devices,
+        "alpha",
+        ALL_LOCATIONS,
+        ALL_STATUSES,
+        AS_OF,
+      ),
+    ).toHaveLength(3);
   });
 });

@@ -3,7 +3,10 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { useFleetDevices } from "@/hooks/use-fleet-devices";
+import {
+  FLEET_POLL_INTERVAL_MS,
+  useFleetDevices,
+} from "@/hooks/use-fleet-devices";
 import type { FleetDevicesResponse } from "@/lib/telemetry/contracts";
 
 import "@/tests/frontend/setup";
@@ -30,8 +33,32 @@ function jsonResponse(payload: unknown, status = 200): Response {
   });
 }
 
+type Deferred<T> = {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+};
+
+function deferred<T>(): Deferred<T> {
+  let resolve!: (value: T) => void;
+
+  return {
+    promise: new Promise<T>((promiseResolve) => {
+      resolve = promiseResolve;
+    }),
+    resolve,
+  };
+}
+
+async function settlePromises() {
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
+
 describe("useFleetDevices", () => {
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -65,6 +92,7 @@ describe("useFleetDevices", () => {
 
     await waitFor(() => expect(result.current.status).toBe("success"));
     expect(result.current.data).toEqual(fleetResponse);
+    expect(result.current.refreshError).toBeNull();
   });
 
   it("exposes a safe error and recovers through retry", async () => {
@@ -120,5 +148,79 @@ describe("useFleetDevices", () => {
     unmount();
 
     expect(signal.aborted).toBe(true);
+  });
+
+  it("polls only after the previous request completes", async () => {
+    vi.useFakeTimers();
+    const firstRequest = deferred<Response>();
+    const fetchMock = vi
+      .fn()
+      .mockReturnValueOnce(firstRequest.promise)
+      .mockResolvedValue(jsonResponse(fleetResponse));
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderHook(() => useFleetDevices());
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FLEET_POLL_INTERVAL_MS * 3);
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    firstRequest.resolve(jsonResponse(fleetResponse));
+    await settlePromises();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FLEET_POLL_INTERVAL_MS - 1);
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("retains successful fleet data after a background failure and recovers", async () => {
+    vi.useFakeTimers();
+    const recovered = {
+      ...fleetResponse,
+      meta: { asOf: "2025-10-09T14:00:15.000Z" },
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(fleetResponse))
+      .mockResolvedValueOnce(jsonResponse({ error: {} }, 500))
+      .mockResolvedValueOnce(jsonResponse(recovered));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() => useFleetDevices());
+    await settlePromises();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FLEET_POLL_INTERVAL_MS);
+    });
+    expect(result.current.status).toBe("success");
+    expect(result.current.data).toEqual(fleetResponse);
+    expect(result.current.refreshError).toMatch(/last successful snapshot/i);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FLEET_POLL_INTERVAL_MS);
+    });
+    expect(result.current.data).toEqual(recovered);
+    expect(result.current.refreshError).toBeNull();
+  });
+
+  it("does not update state when an aborted request resolves after unmount", async () => {
+    const request = deferred<Response>();
+    const fetchMock = vi.fn().mockReturnValue(request.promise);
+    vi.stubGlobal("fetch", fetchMock);
+    const { unmount } = renderHook(() => useFleetDevices());
+
+    unmount();
+    request.resolve(jsonResponse(fleetResponse));
+    await settlePromises();
+
+    expect((fetchMock.mock.calls[0]?.[1] as RequestInit).signal).toMatchObject({
+      aborted: true,
+    });
   });
 });

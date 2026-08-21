@@ -13,13 +13,14 @@ The project currently includes:
 - PostgreSQL local-development configuration
 - Prisma, Zod, Recharts, and focused testing dependencies
 - A migrated Device and Metric schema
-- Repeatable development seed data covering varied telemetry and a no-data device
+- Repeatable 12-device demo fleet covering normal, warning, critical, stale, and no-data states
 - A validated telemetry ingestion endpoint backed by durable PostgreSQL writes
 - Device, recent-metric, and full live-snapshot query endpoints
 - A responsive fleet dashboard backed exclusively by the device query API
 - A selected-device workspace with polling and separate power and temperature charts
+- Derived alert/freshness status, combined fleet filters, and a real-API telemetry simulator
 
-Alerting and the complete architecture documentation will be added incrementally in subsequent phases.
+The complete architecture and scaling documentation will be added in a subsequent phase.
 
 ## Local prerequisites
 
@@ -42,6 +43,12 @@ npm run dev
 On Windows PowerShell, use `Copy-Item .env.example .env` instead of `cp`.
 
 Open [http://localhost:3000](http://localhost:3000).
+
+With the application running, start the explicit demo simulator in another terminal:
+
+```bash
+npm run simulate
+```
 
 Quality checks:
 
@@ -77,15 +84,40 @@ The route waits for the Prisma insert to complete before returning `201`. This k
 
 Recent windows use `recordedAt` because charts represent when a device produced each reading. `receivedAt` remains available to inspect ingestion delay. All query responses use `Cache-Control: no-store` so polling cannot reuse stale telemetry.
 
-Alert and reporting-state fields will be added with the centralized demonstration rules in a later phase; the query layer does not invent placeholder status values.
+Alert and reporting-state fields are intentionally not persisted or added to the query DTOs. The client derives them from the latest metric and the response snapshot time using the centralized demonstration configuration.
 
 ## Fleet dashboard
 
-The fleet view fetches `GET /api/devices` once when it mounts and provides a manual retry after failures. Its summary cards cover the complete returned fleet: total devices, devices with a latest reading, the sum of latest power readings, and the average of latest temperatures. Search matches device name, ID, and location; the location filter options are derived from the response. Devices without telemetry remain visible but are excluded from power and temperature calculations.
+The fleet view fetches `GET /api/devices` immediately and then approximately every 15 seconds using completion-based polling, so requests cannot overlap. A background failure retains the last successful fleet snapshot and a later successful poll recovers automatically. Summary cards cover total devices, normal/current devices, warning or critical devices needing attention, stale/no-data devices, and aggregate power from current telemetry only. Search matches device name, ID, and location; location and status filters combine with search using AND semantics. Fleet ordering remains the stable API order during refreshes.
 
 The first fleet device is selected initially, and choosing another row updates a persistent device-detail workspace. The client fetches `GET /api/devices/:id/live` immediately and then approximately every 15 seconds. Each successful response replaces the prior chart snapshot in full, using the server's 60-second `recordedAt` event-time window; snapshots are never merged into an accumulating client history. At the chart boundary, `recordedAt` maps explicitly to the assignment-facing `timestamp` field. Separate power and temperature charts show raw readings and an inclusive, time-based 10-second rolling average, so irregular reporting intervals are handled without assuming a fixed sample count.
 
-The assignment does not define telemetry units. For demonstration, the UI presents power as watts and temperature as degrees Fahrenheit based on the sample values. Those assumptions live only in `lib/telemetry/display-config.ts`; they are not encoded in the database or API domain model.
+### Demonstration alert and freshness assumptions
+
+The assignment does not define telemetry units or alert limits. For demonstration, the UI presents power in watts and temperature in degrees Fahrenheit (inferred from the sample value of 77). Current readings are classified using these inclusive boundaries:
+
+- Temperature: warning at `85 °F`, critical at `95 °F`
+- Power: warning at `1000 W`, critical at `1250 W`
+
+Telemetry is current through exactly 45 seconds of event-time age and stale above 45 seconds. Freshness uses `recordedAt` because the operator view asks whether the measurement itself represents current device state. `receivedAt` remains ingestion metadata; a production system may additionally use it to classify transport/reporting freshness.
+
+Measurement severity and freshness remain separate. The final visible precedence is **No Data → Stale → Critical → Warning → Normal**, so an old healthy value is not presented as current health. All units, thresholds, and freshness values are centralized in `lib/telemetry/config.ts`; none are encoded in the database schema.
+
+Charts include compact warning and critical reference lines while keeping raw readings and the 10-second rolling average visually dominant.
+
+## Demo fleet and simulator
+
+The deterministic seed manages only its 12 known IDs: Rack A1/A2/A3, Rack B1/B2, Rack C1, UPS 01/02, Cooling Unit 01/02, and PDU A1/B1 across Data Halls A–C, the Power Room, and the Mechanical Room. Re-running the seed replaces telemetry only for those known demo IDs and never truncates unrelated data.
+
+`npm run simulate` sends bounded, gradual telemetry updates about every five seconds through the real `POST /api/metrics` ingestion route. Set `TELEMETRY_API_BASE_URL` to override its default `http://localhost:3000` target. The process is developer-started, stops with Ctrl+C, and never writes directly to Prisma.
+
+The profiles intentionally keep these states reproducible:
+
+- Normal: Rack A1/A2/A3, Rack B1, UPS 02, Cooling Unit 01/02, and PDU A1
+- Warning: UPS 01 (`1050–1150 W`, `86–92 °F`)
+- Critical: Rack B2 (`1260–1350 W`, `96–99 °F`)
+- Stale: PDU B1 has an older last-known seed reading and is excluded from simulation
+- No Data: Rack C1 has no seed metrics and is excluded from simulation
 
 ## Database model
 
@@ -97,4 +129,4 @@ The assignment does not define telemetry units. For demonstration, the UI presen
 
 The seed only replaces metrics belonging to its documented demo device IDs. It does not truncate either table or modify unrelated devices.
 
-The finalized README will include migrations, seed data, simulator usage, API contracts, architecture, scaling analysis, tradeoffs, and test instructions once those features exist.
+The finalized README will add the full architecture, scaling analysis, tradeoffs, and operational hardening discussion in a later phase.

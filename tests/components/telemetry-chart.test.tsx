@@ -53,6 +53,18 @@ vi.mock("recharts", () => ({
   ResponsiveContainer: ({ children }: { children: ReactNode }) => (
     <div>{children}</div>
   ),
+  ReferenceLine: ({
+    label,
+    y,
+  }: {
+    label: { value: string };
+    y: number;
+  }) => (
+    <span
+      data-testid={`threshold-${y}`}
+      data-label={label.value}
+    />
+  ),
   Tooltip: () => null,
   XAxis: ({ domain }: { domain: [number, number] }) => (
     <span data-testid="time-axis" data-domain={JSON.stringify(domain)} />
@@ -122,6 +134,14 @@ describe("TelemetryChart", () => {
       "data-name",
       "10s average",
     );
+    expect(screen.getByTestId("threshold-1000")).toHaveAttribute(
+      "data-label",
+      "Warning 1,000 W",
+    );
+    expect(screen.getByTestId("threshold-1250")).toHaveAttribute(
+      "data-label",
+      "Critical 1,250 W",
+    );
   });
 
   it("uses an independent temperature series and unit context", () => {
@@ -144,5 +164,13 @@ describe("TelemetryChart", () => {
     expect(
       screen.getByTestId("line-temperatureRollingAverage"),
     ).toBeInTheDocument();
+    expect(screen.getByTestId("threshold-85")).toHaveAttribute(
+      "data-label",
+      "Warning 85 °F",
+    );
+    expect(screen.getByTestId("threshold-95")).toHaveAttribute(
+      "data-label",
+      "Critical 95 °F",
+    );
   });
 });

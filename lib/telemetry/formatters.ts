@@ -1,4 +1,4 @@
-import { TELEMETRY_DISPLAY_CONFIG } from "@/lib/telemetry/display-config";
+import { TELEMETRY_DISPLAY_CONFIG } from "@/lib/telemetry/config";
 
 const measurementFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 1,

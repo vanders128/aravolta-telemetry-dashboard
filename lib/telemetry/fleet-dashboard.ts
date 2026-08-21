@@ -1,7 +1,13 @@
 import type { FleetDeviceDto } from "@/lib/telemetry/contracts";
+import {
+  evaluateTelemetry,
+  OPERATOR_STATE_LABELS,
+  type OperatorState,
+} from "@/lib/telemetry/operator-state";
 
 export const ALL_LOCATIONS = "__all_locations__";
 export const UNASSIGNED_LOCATION = "__unassigned_location__";
+export const ALL_STATUSES = "__all_statuses__";
 
 export type LocationFilterValue =
   | typeof ALL_LOCATIONS
@@ -13,11 +19,24 @@ export type LocationOption = {
   value: LocationFilterValue;
 };
 
+export type StatusFilterValue = typeof ALL_STATUSES | OperatorState;
+
+export const STATUS_OPTIONS: ReadonlyArray<{
+  label: string;
+  value: StatusFilterValue;
+}> = [
+  { label: "All statuses", value: ALL_STATUSES },
+  ...(["normal", "warning", "critical", "stale", "no-data"] as const).map(
+    (state) => ({ label: OPERATOR_STATE_LABELS[state], value: state }),
+  ),
+];
+
 export type FleetSummary = {
   totalDevices: number;
-  devicesWithTelemetry: number;
-  aggregatePower: number | null;
-  averageTemperature: number | null;
+  normalCurrent: number;
+  needsAttention: number;
+  staleOrNoData: number;
+  currentAggregatePower: number | null;
 };
 
 export function getDeviceLocationLabel(location: string | null): string {
@@ -74,6 +93,8 @@ export function filterFleetDevices(
   devices: FleetDeviceDto[],
   query: string,
   locationFilter: LocationFilterValue,
+  statusFilter: StatusFilterValue = ALL_STATUSES,
+  asOf: string | Date = new Date(),
 ): FleetDeviceDto[] {
   const normalizedQuery = query.trim().toLowerCase();
 
@@ -87,41 +108,43 @@ export function filterFleetDevices(
     const matchesLocation =
       locationFilter === ALL_LOCATIONS ||
       toLocationFilterValue(device.location) === locationFilter;
+    const matchesStatus =
+      statusFilter === ALL_STATUSES ||
+      evaluateTelemetry(device.latestMetric, asOf).state === statusFilter;
 
-    return matchesSearch && matchesLocation;
+    return matchesSearch && matchesLocation && matchesStatus;
   });
 }
 
 export function calculateFleetSummary(
   devices: FleetDeviceDto[],
+  asOf: string | Date,
 ): FleetSummary {
-  const devicesWithTelemetry = devices.filter(
-    (device) => device.latestMetric !== null,
-  );
-
-  if (devicesWithTelemetry.length === 0) {
-    return {
-      totalDevices: devices.length,
-      devicesWithTelemetry: 0,
-      aggregatePower: null,
-      averageTemperature: null,
-    };
-  }
-
-  const aggregatePower = devicesWithTelemetry.reduce(
-    (sum, device) => sum + (device.latestMetric?.power ?? 0),
-    0,
-  );
-  const aggregateTemperature = devicesWithTelemetry.reduce(
-    (sum, device) => sum + (device.latestMetric?.temperature ?? 0),
-    0,
+  const evaluatedDevices = devices.map((device) => ({
+    device,
+    evaluation: evaluateTelemetry(device.latestMetric, asOf),
+  }));
+  const currentDevices = evaluatedDevices.filter(
+    ({ evaluation }) => evaluation.freshness === "current",
   );
 
   return {
     totalDevices: devices.length,
-    devicesWithTelemetry: devicesWithTelemetry.length,
-    aggregatePower,
-    averageTemperature:
-      aggregateTemperature / devicesWithTelemetry.length,
+    normalCurrent: evaluatedDevices.filter(
+      ({ evaluation }) => evaluation.state === "normal",
+    ).length,
+    needsAttention: evaluatedDevices.filter(({ evaluation }) =>
+      ["warning", "critical"].includes(evaluation.state),
+    ).length,
+    staleOrNoData: evaluatedDevices.filter(({ evaluation }) =>
+      ["stale", "no-data"].includes(evaluation.state),
+    ).length,
+    currentAggregatePower:
+      currentDevices.length === 0
+        ? null
+        : currentDevices.reduce(
+            (sum, { device }) => sum + (device.latestMetric?.power ?? 0),
+            0,
+          ),
   };
 }

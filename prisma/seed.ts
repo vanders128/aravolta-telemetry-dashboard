@@ -1,6 +1,7 @@
 import "dotenv/config";
 
 import { prisma } from "../lib/server/db";
+import { DEMO_DEVICES } from "../lib/telemetry/demo-fleet";
 
 const SAMPLE_INTERVAL_MS = 5_000;
 const SAMPLE_COUNT = 13;
@@ -10,71 +11,39 @@ const temperatureOffsets = [
   -0.8, -0.6, -0.4, -0.3, -0.1, 0, 0.2, 0.4, 0.6, 0.5, 0.3, 0.1, 0,
 ];
 
-const deviceSeeds = [
-  {
-    id: "rack-a1",
-    name: "Rack A1",
-    location: "Data Hall A",
-    telemetry: { power: 610, temperature: 76 },
-  },
-  {
-    id: "rack-a2",
-    name: "Rack A2",
-    location: "Data Hall A",
-    telemetry: { power: 545, temperature: 73 },
-  },
-  {
-    id: "rack-b1",
-    name: "Rack B1",
-    location: "Data Hall B",
-    telemetry: { power: 835, temperature: 84 },
-  },
-  {
-    id: "cooling-01",
-    name: "Cooling Unit 01",
-    location: "Mechanical Room",
-    telemetry: { power: 455, temperature: 68 },
-  },
-  {
-    id: "ups-01",
-    name: "UPS 01",
-    location: "Power Room",
-    telemetry: { power: 1_055, temperature: 93 },
-  },
-  {
-    id: "rack-c1",
-    name: "Rack C1",
-    location: "Data Hall C",
-    telemetry: null,
-  },
-] as const;
-
 function roundToOneDecimal(value: number) {
   return Math.round(value * 10) / 10;
 }
 
 async function main() {
   const seededAt = new Date();
-  const seededDeviceIds = deviceSeeds.map((device) => device.id);
+  const seededDeviceIds = DEMO_DEVICES.map((device) => device.id);
 
-  const metrics = deviceSeeds.flatMap((device, deviceIndex) => {
-    if (!device.telemetry) {
+  const metrics = DEMO_DEVICES.flatMap((device, deviceIndex) => {
+    const telemetry = device.seedTelemetry;
+
+    if (!telemetry) {
       return [];
     }
+
+    const latestRecordedAt = new Date(
+      seededAt.getTime() -
+        (telemetry.latestAgeSeconds ?? 0) * 1_000,
+    );
 
     return Array.from({ length: SAMPLE_COUNT }, (_, sampleIndex) => {
       const ageInSamples = SAMPLE_COUNT - sampleIndex - 1;
       const recordedAt = new Date(
-        seededAt.getTime() - ageInSamples * SAMPLE_INTERVAL_MS,
+        latestRecordedAt.getTime() - ageInSamples * SAMPLE_INTERVAL_MS,
       );
 
       return {
         deviceId: device.id,
         power: roundToOneDecimal(
-          device.telemetry.power + powerOffsets[sampleIndex],
+          telemetry.power + powerOffsets[sampleIndex],
         ),
         temperature: roundToOneDecimal(
-          device.telemetry.temperature + temperatureOffsets[sampleIndex],
+          telemetry.temperature + temperatureOffsets[sampleIndex],
         ),
         recordedAt,
         receivedAt: new Date(recordedAt.getTime() + 200 + deviceIndex * 25),
@@ -87,7 +56,7 @@ async function main() {
       where: { deviceId: { in: seededDeviceIds } },
     });
 
-    for (const device of deviceSeeds) {
+    for (const device of DEMO_DEVICES) {
       await transaction.device.upsert({
         where: { id: device.id },
         create: {
@@ -106,7 +75,7 @@ async function main() {
   });
 
   console.log(
-    `Seeded ${deviceSeeds.length} devices and ${metrics.length} telemetry readings at ${seededAt.toISOString()}.`,
+    `Seeded ${DEMO_DEVICES.length} devices and ${metrics.length} telemetry readings at ${seededAt.toISOString()}.`,
   );
 }
 

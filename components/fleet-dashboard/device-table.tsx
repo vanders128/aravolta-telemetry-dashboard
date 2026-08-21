@@ -5,18 +5,22 @@ import {
   formatTemperature,
   formatTimestamp,
 } from "@/lib/telemetry/formatters";
+import { evaluateTelemetry } from "@/lib/telemetry/operator-state";
 
 import styles from "./telemetry-dashboard.module.css";
+import { TelemetryStatus } from "./telemetry-status";
 
 export function DeviceTable({
   devices,
   totalDeviceCount,
   selectedDeviceId,
+  asOf,
   onSelectDevice,
 }: {
   devices: FleetDeviceDto[];
   totalDeviceCount: number;
   selectedDeviceId: string | null;
+  asOf: string;
   onSelectDevice: (deviceId: string) => void;
 }) {
   if (totalDeviceCount === 0) {
@@ -52,6 +56,7 @@ export function DeviceTable({
           <tr>
             <th scope="col">Device</th>
             <th scope="col">Location</th>
+            <th scope="col">Status</th>
             <th scope="col" className={styles.numericColumn}>
               Latest power
             </th>
@@ -65,6 +70,8 @@ export function DeviceTable({
           {devices.map((device) => {
             const metric = device.latestMetric;
             const isSelected = device.id === selectedDeviceId;
+            const evaluation = evaluateTelemetry(metric, asOf);
+            const isLastKnown = evaluation.freshness === "stale";
 
             return (
               <tr
@@ -91,12 +98,21 @@ export function DeviceTable({
                   </button>
                 </th>
                 <td>{getDeviceLocationLabel(device.location)}</td>
+                <td>
+                  <TelemetryStatus evaluation={evaluation} compact />
+                </td>
                 {metric ? (
                   <>
-                    <td className={styles.numericCell}>
+                    <td
+                      className={`${styles.numericCell} ${isLastKnown ? styles.lastKnownReading : ""}`}
+                      aria-label={`${isLastKnown ? "Last-known" : "Latest"} power ${formatPower(metric.power)}`}
+                    >
                       {formatPower(metric.power)}
                     </td>
-                    <td className={styles.numericCell}>
+                    <td
+                      className={`${styles.numericCell} ${isLastKnown ? styles.lastKnownReading : ""}`}
+                      aria-label={`${isLastKnown ? "Last-known" : "Latest"} temperature ${formatTemperature(metric.temperature)}`}
+                    >
                       {formatTemperature(metric.temperature)}
                     </td>
                     <td>

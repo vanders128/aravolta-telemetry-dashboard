@@ -6,10 +6,12 @@ import { useFleetDevices } from "@/hooks/use-fleet-devices";
 import type { FleetDeviceDto } from "@/lib/telemetry/contracts";
 import {
   ALL_LOCATIONS,
+  ALL_STATUSES,
   calculateFleetSummary,
   filterFleetDevices,
   getLocationOptions,
   type LocationFilterValue,
+  type StatusFilterValue,
 } from "@/lib/telemetry/fleet-dashboard";
 import { formatTimestamp } from "@/lib/telemetry/formatters";
 
@@ -22,7 +24,15 @@ import styles from "./telemetry-dashboard.module.css";
 
 const EMPTY_DEVICES: FleetDeviceDto[] = [];
 
-function DashboardHeader({ asOf }: { asOf?: string }) {
+function DashboardHeader({
+  asOf,
+  isRefreshing,
+  refreshError,
+}: {
+  asOf?: string;
+  isRefreshing: boolean;
+  refreshError: string | null;
+}) {
   return (
     <header className={styles.header}>
       <div>
@@ -38,6 +48,11 @@ function DashboardHeader({ asOf }: { asOf?: string }) {
           <time dateTime={asOf} title={asOf}>
             {formatTimestamp(asOf)}
           </time>
+          <small>
+            {isRefreshing
+              ? "Refreshing fleet…"
+              : refreshError ?? "Fleet refreshes every 15s"}
+          </small>
         </p>
       ) : null}
     </header>
@@ -49,22 +64,31 @@ export function TelemetryDashboard() {
   const [query, setQuery] = useState("");
   const [locationFilter, setLocationFilter] =
     useState<LocationFilterValue>(ALL_LOCATIONS);
+  const [statusFilter, setStatusFilter] =
+    useState<StatusFilterValue>(ALL_STATUSES);
   const [explicitSelectedDeviceId, setExplicitSelectedDeviceId] = useState<
     string | null
   >(null);
 
   const devices = fleet.data?.data.devices ?? EMPTY_DEVICES;
-  const summary = useMemo(() => calculateFleetSummary(devices), [devices]);
+  const asOf = fleet.data?.meta.asOf ?? new Date(0).toISOString();
+  const summary = useMemo(
+    () => calculateFleetSummary(devices, asOf),
+    [asOf, devices],
+  );
   const locationOptions = useMemo(
     () => getLocationOptions(devices),
     [devices],
   );
   const visibleDevices = useMemo(
-    () => filterFleetDevices(devices, query, locationFilter),
-    [devices, locationFilter, query],
+    () =>
+      filterFleetDevices(devices, query, locationFilter, statusFilter, asOf),
+    [asOf, devices, locationFilter, query, statusFilter],
   );
   const filtersAreActive =
-    query.trim().length > 0 || locationFilter !== ALL_LOCATIONS;
+    query.trim().length > 0 ||
+    locationFilter !== ALL_LOCATIONS ||
+    statusFilter !== ALL_STATUSES;
   const selectedDevice = useMemo(
     () =>
       devices.find((device) => device.id === explicitSelectedDeviceId) ??
@@ -79,12 +103,17 @@ export function TelemetryDashboard() {
   function clearFilters() {
     setQuery("");
     setLocationFilter(ALL_LOCATIONS);
+    setStatusFilter(ALL_STATUSES);
   }
 
   return (
     <main className={styles.page}>
       <div className={styles.shell}>
-        <DashboardHeader asOf={fleet.data?.meta.asOf} />
+        <DashboardHeader
+          asOf={fleet.data?.meta.asOf}
+          isRefreshing={fleet.isRefreshing}
+          refreshError={fleet.refreshError}
+        />
 
         {fleet.status === "loading" ? <DashboardLoading /> : null}
         {fleet.status === "error" ? (
@@ -114,12 +143,14 @@ export function TelemetryDashboard() {
                   <DeviceFilters
                     query={query}
                     locationFilter={locationFilter}
+                    statusFilter={statusFilter}
                     locationOptions={locationOptions}
                     visibleCount={visibleDevices.length}
                     totalCount={devices.length}
                     filtersAreActive={filtersAreActive}
                     onQueryChange={setQuery}
                     onLocationChange={setLocationFilter}
+                    onStatusChange={setStatusFilter}
                     onClear={clearFilters}
                   />
                 ) : null}
@@ -128,6 +159,7 @@ export function TelemetryDashboard() {
                   devices={visibleDevices}
                   totalDeviceCount={devices.length}
                   selectedDeviceId={selectedDevice?.id ?? null}
+                  asOf={asOf}
                   onSelectDevice={setExplicitSelectedDeviceId}
                 />
               </section>

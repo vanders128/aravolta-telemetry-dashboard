@@ -115,6 +115,8 @@ describe("DeviceDetailPane", () => {
 
     expect(screen.getByText("612 W")).toBeInTheDocument();
     expect(screen.getByText("77 °F")).toBeInTheDocument();
+    expect(screen.getByText("Normal")).toBeInTheDocument();
+    expect(screen.getByText("Current")).toBeInTheDocument();
     expect(
       screen.getByRole("img", { name: "power telemetry chart" }),
     ).toBeInTheDocument();
@@ -164,6 +166,51 @@ describe("DeviceDetailPane", () => {
       screen.getByText("No telemetry in the current 60-second window"),
     ).toBeInTheDocument();
     expect(screen.queryByText("No telemetry received")).not.toBeInTheDocument();
+  });
+
+  it("shows warning reason text for a current threshold breach", () => {
+    const warningMetric = {
+      ...snapshot().data.latestMetric!,
+      power: 1_000,
+    };
+    useLiveTelemetryMock.mockReturnValue({
+      deviceId: "rack-a1",
+      status: "success",
+      data: snapshot({ latestMetric: warningMetric, metrics: [warningMetric] }),
+      error: null,
+      refreshError: null,
+      isRefreshing: false,
+      retry,
+    });
+
+    render(<DeviceDetailPane device={device} isSelectionFilteredOut={false} />);
+
+    expect(screen.getByText("Warning")).toBeInTheDocument();
+    expect(screen.getByText("Power above warning threshold")).toBeInTheDocument();
+  });
+
+  it("labels stale values as last-known and explains freshness precedence", () => {
+    const staleMetric = {
+      ...snapshot().data.latestMetric!,
+      power: 1_300,
+      recordedAt: "2025-10-09T13:59:00.000Z",
+    };
+    useLiveTelemetryMock.mockReturnValue({
+      deviceId: "rack-a1",
+      status: "success",
+      data: snapshot({ latestMetric: staleMetric, metrics: [] }),
+      error: null,
+      refreshError: null,
+      isRefreshing: false,
+      retry,
+    });
+
+    render(<DeviceDetailPane device={device} isSelectionFilteredOut={false} />);
+
+    expect(screen.getAllByText("Stale")).toHaveLength(2);
+    expect(screen.getByText("Last-known power")).toBeInTheDocument();
+    expect(screen.getByText("Telemetry older than 45 seconds")).toBeInTheDocument();
+    expect(screen.getByText(/Displaying last-known measurements/i)).toBeInTheDocument();
   });
 
   it("retains data and displays a restrained background refresh warning", () => {

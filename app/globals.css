@@ -23,6 +23,17 @@
   --chart-grid: #dce6ea;
   --chart-raw: #2c7897;
   --chart-average: #18566f;
+  --status-normal: #28734c;
+  --status-normal-subtle: #eef8f2;
+  --status-warning: #b36a00;
+  --status-warning-strong: #8a4f00;
+  --status-warning-subtle: #fff7e6;
+  --status-critical: #b42318;
+  --status-critical-subtle: #fff1f0;
+  --status-stale: #9a5b13;
+  --status-stale-subtle: #fff7ed;
+  --status-no-data: #667085;
+  --status-no-data-subtle: #f2f4f7;
   color-scheme: light;
 }
 

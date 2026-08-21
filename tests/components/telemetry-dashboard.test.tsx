@@ -69,6 +69,8 @@ function mockSuccess(devices: FleetDeviceDto[]) {
     status: "success",
     data: response(devices),
     error: null,
+    refreshError: null,
+    isRefreshing: false,
     retry,
   });
 }
@@ -83,6 +85,8 @@ describe("TelemetryDashboard", () => {
       status: "loading",
       data: null,
       error: null,
+      refreshError: null,
+      isRefreshing: false,
       retry,
     });
 
@@ -100,6 +104,8 @@ describe("TelemetryDashboard", () => {
       status: "error",
       data: null,
       error: "Unable to load fleet telemetry. Try the request again.",
+      refreshError: null,
+      isRefreshing: false,
       retry,
     });
 
@@ -151,11 +157,10 @@ describe("TelemetryDashboard", () => {
       name: "Fleet summary",
     });
     expect(within(summaryRegion).getByText("Total devices")).toBeInTheDocument();
-    expect(
-      within(summaryRegion).getByText("Devices with telemetry"),
-    ).toBeInTheDocument();
+    expect(within(summaryRegion).getByText("Normal / current")).toBeInTheDocument();
+    expect(within(summaryRegion).getByText("Needs attention")).toBeInTheDocument();
+    expect(within(summaryRegion).getByText("Stale / no data")).toBeInTheDocument();
     expect(within(summaryRegion).getByText("612 W")).toBeInTheDocument();
-    expect(within(summaryRegion).getByText("73.5 °F")).toBeInTheDocument();
 
     const table = screen.getByRole("table");
     const primaryRow = within(table).getByText("Primary rack").closest("tr");
@@ -164,6 +169,7 @@ describe("TelemetryDashboard", () => {
 
     expect(primaryRow).not.toBeNull();
     expect(within(primaryRow!).getByText("612 W")).toBeInTheDocument();
+    expect(within(primaryRow!).getByText("Normal")).toBeInTheDocument();
     expect(idleRow).not.toBeNull();
     expect(within(idleRow!).getByText("0 W")).toBeInTheDocument();
     expect(newRow).not.toBeNull();
@@ -175,6 +181,7 @@ describe("TelemetryDashboard", () => {
       within(newRow!).getByRole("cell", { name: "No temperature reading" }),
     ).toHaveTextContent("—");
     expect(within(newRow!).getByText("Never")).toBeInTheDocument();
+    expect(within(newRow!).getByText("No Data")).toBeInTheDocument();
     expect(
       within(newRow!).getByText("No telemetry received"),
     ).toBeInTheDocument();
@@ -221,6 +228,47 @@ describe("TelemetryDashboard", () => {
     expect(screen.getByText("Alpha rack")).toBeInTheDocument();
     expect(screen.getByText("Beta rack")).toBeInTheDocument();
     expect(screen.getByText("Gamma rack")).toBeInTheDocument();
+  });
+
+  it("combines status filtering with search and location", async () => {
+    const user = userEvent.setup();
+    mockSuccess([
+      device("rack-a1", { name: "Alpha rack", location: "North plant" }),
+      device("rack-b1", {
+        name: "Beta UPS",
+        location: "North plant",
+        latestMetric: {
+          id: "metric-warning",
+          deviceId: "rack-b1",
+          power: 1_000,
+          temperature: 80,
+          recordedAt: "2025-10-09T13:59:55.000Z",
+          receivedAt: "2025-10-09T13:59:56.000Z",
+        },
+      }),
+      device("rack-c1", {
+        name: "Gamma UPS",
+        location: "South plant",
+        latestMetric: null,
+      }),
+    ]);
+
+    render(<TelemetryDashboard />);
+
+    const status = screen.getByRole("combobox", { name: "Status" });
+    const location = screen.getByRole("combobox", { name: "Location" });
+    const search = screen.getByRole("searchbox", { name: "Search devices" });
+
+    await user.selectOptions(status, "warning");
+    expect(screen.getByText("Beta UPS")).toBeInTheDocument();
+    expect(screen.queryByText("Alpha rack")).not.toBeInTheDocument();
+
+    await user.type(search, "beta");
+    await user.selectOptions(location, "location:North plant");
+    expect(screen.getByText("Beta UPS")).toBeInTheDocument();
+
+    await user.selectOptions(location, "location:South plant");
+    expect(screen.getByText("No devices match these filters")).toBeInTheDocument();
   });
 
   it("selects the first device initially and changes selection accessibly", async () => {

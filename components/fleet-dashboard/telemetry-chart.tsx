@@ -5,6 +5,7 @@ import {
   Legend,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -12,7 +13,10 @@ import {
 } from "recharts";
 
 import type { RollingTelemetryPoint } from "@/lib/telemetry/contracts";
-import { TELEMETRY_DISPLAY_CONFIG } from "@/lib/telemetry/display-config";
+import {
+  TELEMETRY_DISPLAY_CONFIG,
+  TELEMETRY_THRESHOLDS,
+} from "@/lib/telemetry/config";
 
 import styles from "./telemetry-dashboard.module.css";
 
@@ -32,11 +36,13 @@ const chartConfig = {
   power: {
     averageKey: "powerRollingAverage" as const,
     rawKey: "power" as const,
+    thresholds: TELEMETRY_THRESHOLDS.power,
     ...TELEMETRY_DISPLAY_CONFIG.power,
   },
   temperature: {
     averageKey: "temperatureRollingAverage" as const,
     rawKey: "temperature" as const,
+    thresholds: TELEMETRY_THRESHOLDS.temperature,
     ...TELEMETRY_DISPLAY_CONFIG.temperature,
   },
 };
@@ -63,7 +69,7 @@ export function TelemetryChart({
   const rawValue = latestPoint?.[config.rawKey];
   const averageValue = latestPoint?.[config.averageKey];
   const titleId = `${metric}-telemetry-title`;
-  const description = `${config.label} telemetry over the last 60 seconds, showing raw readings and a 10-second rolling average.`;
+  const description = `${config.label} telemetry over the last 60 seconds, showing raw readings, a 10-second rolling average, and demo warning and critical thresholds.`;
 
   return (
     <section className={styles.chartCard} aria-labelledby={titleId}>
@@ -147,6 +153,32 @@ export function TelemetryChart({
               iconType="plainline"
               iconSize={16}
               wrapperStyle={{ fontSize: "0.72rem", paddingTop: "0.35rem" }}
+            />
+            <ReferenceLine
+              y={config.thresholds.warning}
+              ifOverflow="extendDomain"
+              stroke="var(--status-warning)"
+              strokeDasharray="3 3"
+              strokeWidth={1}
+              label={{
+                value: `Warning ${valueFormatter.format(config.thresholds.warning)} ${config.unitSymbol}`,
+                position: "insideTopRight",
+                fill: "var(--status-warning-strong)",
+                fontSize: 10,
+              }}
+            />
+            <ReferenceLine
+              y={config.thresholds.critical}
+              ifOverflow="extendDomain"
+              stroke="var(--status-critical)"
+              strokeDasharray="3 3"
+              strokeWidth={1}
+              label={{
+                value: `Critical ${valueFormatter.format(config.thresholds.critical)} ${config.unitSymbol}`,
+                position: "insideTopRight",
+                fill: "var(--status-critical)",
+                fontSize: 10,
+              }}
             />
             <Line
               dataKey={config.rawKey}

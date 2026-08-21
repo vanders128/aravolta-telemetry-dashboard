@@ -1,31 +1,37 @@
 import type {
   LocationFilterValue,
   LocationOption,
+  StatusFilterValue,
 } from "@/lib/telemetry/fleet-dashboard";
+import { STATUS_OPTIONS } from "@/lib/telemetry/fleet-dashboard";
 
 import styles from "./telemetry-dashboard.module.css";
 
 type DeviceFiltersProps = {
   query: string;
   locationFilter: LocationFilterValue;
+  statusFilter: StatusFilterValue;
   locationOptions: LocationOption[];
   visibleCount: number;
   totalCount: number;
   filtersAreActive: boolean;
   onQueryChange: (query: string) => void;
   onLocationChange: (location: LocationFilterValue) => void;
+  onStatusChange: (status: StatusFilterValue) => void;
   onClear: () => void;
 };
 
 export function DeviceFilters({
   query,
   locationFilter,
+  statusFilter,
   locationOptions,
   visibleCount,
   totalCount,
   filtersAreActive,
   onQueryChange,
   onLocationChange,
+  onStatusChange,
   onClear,
 }: DeviceFiltersProps) {
   return (
@@ -50,6 +56,22 @@ export function DeviceFilters({
             }
           >
             {locationOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className={styles.field}>
+          <span>Status</span>
+          <select
+            value={statusFilter}
+            onChange={(event) =>
+              onStatusChange(event.target.value as StatusFilterValue)
+            }
+          >
+            {STATUS_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
