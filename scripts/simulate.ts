@@ -1,7 +1,8 @@
 import {
   advanceSimulatorReadings,
   createInitialSimulatorReadings,
-  type SimulatedReading,
+  createSimulatorPayloads,
+  type SimulatedTelemetryPayload,
 } from "../lib/telemetry/simulator";
 
 const SIMULATOR_CADENCE_MS = 5_000;
@@ -26,14 +27,14 @@ function delay(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-async function sendReading(reading: SimulatedReading, timestamp: string) {
+async function sendReading(reading: SimulatedTelemetryPayload) {
   const response = await fetch(`${baseUrl}/api/metrics`, {
     method: "POST",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ ...reading, timestamp }),
+    body: JSON.stringify(reading),
   });
 
   if (!response.ok) {
@@ -47,9 +48,9 @@ async function sendReading(reading: SimulatedReading, timestamp: string) {
 async function runCycle() {
   readings = advanceSimulatorReadings(readings, tick);
   tick += 1;
-  const timestamp = new Date().toISOString();
+  const payloads = createSimulatorPayloads(readings);
   const results = await Promise.allSettled(
-    readings.map((reading) => sendReading(reading, timestamp)),
+    payloads.map(sendReading),
   );
   const failures = results.filter(
     (result): result is PromiseRejectedResult => result.status === "rejected",
@@ -66,7 +67,7 @@ async function runCycle() {
   }
 
   console.log(
-    `${timestamp} · cycle ${tick}: persisted ${readings.length} device readings`,
+    `${payloads[0]?.timestamp ?? new Date().toISOString()} · cycle ${tick}: persisted ${readings.length} device readings`,
   );
 }
 

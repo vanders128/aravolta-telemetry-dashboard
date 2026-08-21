@@ -30,6 +30,18 @@ describe("telemetryIngestionSchema", () => {
     expect(result.recordedAt.toISOString()).toBe("2025-10-09T14:00:00.000Z");
   });
 
+  it("accepts zero measurements and a well-formed future timestamp", () => {
+    const result = telemetryIngestionSchema.parse({
+      ...validPayload,
+      power: 0,
+      temperature: 0,
+      timestamp: "2099-01-01T00:00:00Z",
+    });
+
+    expect(result).toMatchObject({ power: 0, temperature: 0 });
+    expect(result.recordedAt.toISOString()).toBe("2099-01-01T00:00:00.000Z");
+  });
+
   it.each([
     "2025-10-09T14:00:00",
     "2025-02-30T14:00:00Z",

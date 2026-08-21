@@ -221,6 +221,32 @@ describe("device query routes", () => {
     });
   });
 
+  it("returns a 200 empty live state for a known device without telemetry", async () => {
+    getLiveDeviceSnapshotMock.mockResolvedValue({
+      outcome: "found",
+      data: {
+        device,
+        latestMetric: null,
+        metrics: [],
+      },
+      meta: {
+        asOf: "2025-10-09T14:00:00.000Z",
+        windowSeconds: 60,
+      },
+    });
+
+    const response = await getDeviceLive(
+      new Request("http://localhost/api/devices/rack-a1/live"),
+      context(),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    await expect(response.json()).resolves.toMatchObject({
+      data: { latestMetric: null, metrics: [] },
+    });
+  });
+
   it("returns 404 for a live snapshot of an unknown device", async () => {
     getLiveDeviceSnapshotMock.mockResolvedValue({
       outcome: "device-not-found",

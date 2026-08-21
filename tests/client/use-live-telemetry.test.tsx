@@ -267,4 +267,19 @@ describe("useLiveTelemetry", () => {
     expect(result.current.status).toBe("error");
     expect(result.current.data).toBeNull();
   });
+
+  it("cleans up a scheduled poll after unmount", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(snapshot("rack-a1")));
+    vi.stubGlobal("fetch", fetchMock);
+    const { unmount } = renderHook(() => useLiveTelemetry("rack-a1"));
+    await settlePromises();
+
+    unmount();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(LIVE_TELEMETRY_POLL_INTERVAL_MS * 2);
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });

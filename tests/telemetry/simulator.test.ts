@@ -9,6 +9,7 @@ import {
 import {
   advanceSimulatorReadings,
   createInitialSimulatorReadings,
+  createSimulatorPayloads,
 } from "@/lib/telemetry/simulator";
 
 describe("deterministic demo fleet", () => {
@@ -50,5 +51,23 @@ describe("deterministic demo fleet", () => {
     expect(warning?.temperature).toBeGreaterThanOrEqual(86);
     expect(critical?.power).toBeGreaterThanOrEqual(1_260);
     expect(critical?.temperature).toBeGreaterThanOrEqual(96);
+  });
+
+  it("creates one explicit non-future event-time timestamp per cycle", () => {
+    const cycleTime = new Date("2025-10-09T14:00:00.000Z");
+    const payloads = createSimulatorPayloads(
+      createInitialSimulatorReadings(),
+      cycleTime,
+    );
+
+    expect(payloads).toHaveLength(10);
+    expect(new Set(payloads.map((payload) => payload.timestamp))).toEqual(
+      new Set([cycleTime.toISOString()]),
+    );
+    expect(
+      payloads.every(
+        (payload) => Date.parse(payload.timestamp) <= cycleTime.getTime(),
+      ),
+    ).toBe(true);
   });
 });

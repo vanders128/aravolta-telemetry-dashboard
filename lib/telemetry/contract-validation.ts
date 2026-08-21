@@ -38,13 +38,20 @@ function isDeviceIdentityDto(value: unknown): value is DeviceIdentityDto {
 }
 
 function isFleetDeviceDto(value: unknown): value is FleetDeviceDto {
+  if (
+    !isRecord(value) ||
+    typeof value.id !== "string" ||
+    typeof value.name !== "string" ||
+    !(value.location === null || typeof value.location === "string") ||
+    !isTimestamp(value.createdAt)
+  ) {
+    return false;
+  }
+
   return (
-    isRecord(value) &&
-    typeof value.id === "string" &&
-    typeof value.name === "string" &&
-    (value.location === null || typeof value.location === "string") &&
-    isTimestamp(value.createdAt) &&
-    (value.latestMetric === null || isMetricDto(value.latestMetric))
+    value.latestMetric === null ||
+    (isMetricDto(value.latestMetric) &&
+      value.latestMetric.deviceId === value.id)
   );
 }
 

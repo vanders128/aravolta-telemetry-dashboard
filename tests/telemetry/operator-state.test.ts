@@ -25,18 +25,18 @@ function metric(overrides: Partial<MetricDto> = {}): MetricDto {
 
 describe("measurement severity", () => {
   it.each([
-    [84.9, "normal"],
+    [84.999, "normal"],
     [85, "warning"],
-    [94.9, "warning"],
+    [94.999, "warning"],
     [95, "critical"],
   ] as const)("classifies temperature %s as %s", (value, expected) => {
     expect(evaluateTemperature(value)).toBe(expected);
   });
 
   it.each([
-    [999.9, "normal"],
+    [999.999, "normal"],
     [1_000, "warning"],
-    [1_249.9, "warning"],
+    [1_249.999, "warning"],
     [1_250, "critical"],
   ] as const)("classifies power %s as %s", (value, expected) => {
     expect(evaluatePower(value)).toBe(expected);

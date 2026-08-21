@@ -96,12 +96,13 @@ describe("live telemetry presentation", () => {
 
   it("handles irregular intervals and averages power and temperature separately", () => {
     const result = calculateRollingTelemetry([
+      point("2025-10-09T13:59:59.900Z", 600, 90),
       point("2025-10-09T13:59:51.000Z", 100, 60),
       point("2025-10-09T13:59:56.500Z", 200, 75),
-      point("2025-10-09T13:59:59.900Z", 600, 90),
     ]);
     const latest = result.at(-1);
 
+    expect(result.map((sample) => sample.power)).toEqual([100, 200, 600]);
     expect(latest?.powerRollingAverage).toBe(300);
     expect(latest?.temperatureRollingAverage).toBe(75);
   });

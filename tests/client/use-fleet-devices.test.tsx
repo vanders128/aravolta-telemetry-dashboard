@@ -223,4 +223,47 @@ describe("useFleetDevices", () => {
       aborted: true,
     });
   });
+
+  it("cleans up a scheduled poll after unmount", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(fleetResponse));
+    vi.stubGlobal("fetch", fetchMock);
+    const { unmount } = renderHook(() => useFleetDevices());
+    await settlePromises();
+
+    unmount();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FLEET_POLL_INTERVAL_MS * 2);
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not let an ignored aborted retry response overwrite newer data", async () => {
+    const firstRequest = deferred<Response>();
+    const secondRequest = deferred<Response>();
+    const recovered = {
+      ...fleetResponse,
+      meta: { asOf: "2025-10-09T14:00:15.000Z" },
+    };
+    const fetchMock = vi
+      .fn()
+      .mockReturnValueOnce(firstRequest.promise)
+      .mockReturnValueOnce(secondRequest.promise);
+    vi.stubGlobal("fetch", fetchMock);
+    const { result } = renderHook(() => useFleetDevices());
+    const firstSignal = (fetchMock.mock.calls[0]?.[1] as RequestInit)
+      .signal as AbortSignal;
+
+    act(() => result.current.retry());
+    expect(firstSignal.aborted).toBe(true);
+
+    secondRequest.resolve(jsonResponse(recovered));
+    await settlePromises();
+    expect(result.current.data).toEqual(recovered);
+
+    firstRequest.resolve(jsonResponse(fleetResponse));
+    await settlePromises();
+    expect(result.current.data).toEqual(recovered);
+  });
 });

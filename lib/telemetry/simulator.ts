@@ -9,6 +9,10 @@ export type SimulatedReading = {
   temperature: number;
 };
 
+export type SimulatedTelemetryPayload = SimulatedReading & {
+  timestamp: string;
+};
+
 const DRIFT_PATTERN = [-1, -0.5, 0.5, 1, 0.5, 0, -0.5, 0.5] as const;
 
 function clamp(value: number, min: number, max: number): number {
@@ -65,4 +69,13 @@ export function advanceSimulatorReadings(
       ),
     };
   });
+}
+
+export function createSimulatorPayloads(
+  readings: readonly SimulatedReading[],
+  recordedAt = new Date(),
+): SimulatedTelemetryPayload[] {
+  const timestamp = recordedAt.toISOString();
+
+  return readings.map((reading) => ({ ...reading, timestamp }));
 }
