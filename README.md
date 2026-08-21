@@ -15,8 +15,9 @@ The project currently includes:
 - A migrated Device and Metric schema
 - Repeatable development seed data covering varied telemetry and a no-data device
 - A validated telemetry ingestion endpoint backed by durable PostgreSQL writes
+- Device, recent-metric, and full live-snapshot query endpoints
 
-Query APIs, dashboard features, and the complete architecture documentation will be added incrementally in subsequent phases.
+Dashboard features and the complete architecture documentation will be added incrementally in subsequent phases.
 
 ## Local prerequisites
 
@@ -65,6 +66,16 @@ npm run build
 A successful request returns `201 Created` with the persisted metric under `data`. Its database `BigInt` ID is represented as a decimal string, and both timestamps are ISO strings. Unknown device IDs are deliberately rejected with `404 DEVICE_NOT_FOUND`; ingestion never creates devices implicitly. Malformed JSON returns `400`, valid JSON that fails schema validation returns `422`, and unexpected persistence failures return a sanitized `500` response.
 
 The route waits for the Prisma insert to complete before returning `201`. This keeps acknowledgement tied to a durable PostgreSQL write without introducing a queue for the take-home scope.
+
+## Telemetry queries
+
+- `GET /api/devices` returns every device with its latest metric, or `null` for devices that have never reported.
+- `GET /api/devices/:id/metrics?windowSeconds=60` returns chronologically ordered metrics in a recent event-time window. The window defaults to 60 seconds and accepts positive integer values up to 3600.
+- `GET /api/devices/:id/live` returns a complete 60-second snapshot plus the device's latest known metric for simple polling.
+
+Recent windows use `recordedAt` because charts represent when a device produced each reading. `receivedAt` remains available to inspect ingestion delay. All query responses use `Cache-Control: no-store` so polling cannot reuse stale telemetry.
+
+Alert and reporting-state fields will be added with the centralized demonstration rules in a later phase; the query layer does not invent placeholder status values.
 
 ## Database model
 

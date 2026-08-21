@@ -1,23 +1,19 @@
+import { deviceRepository } from "@/lib/server/repositories/device-repository";
 import { metricRepository } from "@/lib/server/repositories/metric-repository";
+import {
+  serializeMetric,
+  type MetricDto,
+} from "@/lib/server/serializers/metric";
 import type { TelemetryIngestionInput } from "@/lib/telemetry/ingestion-schema";
 
-type IngestedMetric = {
-  id: string;
-  deviceId: string;
-  power: number;
-  temperature: number;
-  recordedAt: string;
-  receivedAt: string;
-};
-
 export type TelemetryIngestionResult =
-  | { outcome: "created"; metric: IngestedMetric }
+  | { outcome: "created"; metric: MetricDto }
   | { outcome: "device-not-found" };
 
 export async function ingestTelemetry(
   input: TelemetryIngestionInput,
 ): Promise<TelemetryIngestionResult> {
-  const device = await metricRepository.findDeviceById(input.deviceId);
+  const device = await deviceRepository.findById(input.deviceId);
 
   if (!device) {
     return { outcome: "device-not-found" };
@@ -27,13 +23,6 @@ export async function ingestTelemetry(
 
   return {
     outcome: "created",
-    metric: {
-      id: metric.id.toString(),
-      deviceId: metric.deviceId,
-      power: metric.power,
-      temperature: metric.temperature,
-      recordedAt: metric.recordedAt.toISOString(),
-      receivedAt: metric.receivedAt.toISOString(),
-    },
+    metric: serializeMetric(metric),
   };
 }

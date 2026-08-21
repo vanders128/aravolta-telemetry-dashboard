@@ -1,16 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { deviceRepository } from "@/lib/server/repositories/device-repository";
 import { metricRepository } from "@/lib/server/repositories/metric-repository";
 import { ingestTelemetry } from "@/lib/server/services/telemetry-ingestion-service";
 
+vi.mock("@/lib/server/repositories/device-repository", () => ({
+  deviceRepository: {
+    findById: vi.fn(),
+  },
+}));
+
 vi.mock("@/lib/server/repositories/metric-repository", () => ({
   metricRepository: {
-    findDeviceById: vi.fn(),
     createMetric: vi.fn(),
   },
 }));
 
-const findDeviceById = vi.mocked(metricRepository.findDeviceById);
+const findDeviceById = vi.mocked(deviceRepository.findById);
 const createMetric = vi.mocked(metricRepository.createMetric);
 
 const input = {
@@ -27,7 +33,12 @@ describe("ingestTelemetry", () => {
 
   it("persists telemetry for a known device and returns a JSON-safe DTO", async () => {
     const receivedAt = new Date("2025-10-09T14:00:00.250Z");
-    findDeviceById.mockResolvedValue({ id: "rack-a1" });
+    findDeviceById.mockResolvedValue({
+      id: "rack-a1",
+      name: "Rack A1",
+      location: "Data Hall A",
+      createdAt: new Date("2025-01-01T00:00:00Z"),
+    });
     createMetric.mockResolvedValue({
       id: BigInt("9007199254740993"),
       ...input,
@@ -59,7 +70,12 @@ describe("ingestTelemetry", () => {
   });
 
   it("allows persistence failures to reach the HTTP boundary", async () => {
-    findDeviceById.mockResolvedValue({ id: "rack-a1" });
+    findDeviceById.mockResolvedValue({
+      id: "rack-a1",
+      name: "Rack A1",
+      location: "Data Hall A",
+      createdAt: new Date("2025-01-01T00:00:00Z"),
+    });
     createMetric.mockRejectedValue(new Error("database unavailable"));
 
     await expect(ingestTelemetry(input)).rejects.toThrow("database unavailable");
