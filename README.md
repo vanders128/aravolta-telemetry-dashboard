@@ -14,8 +14,9 @@ The project currently includes:
 - Prisma, Zod, Recharts, and focused testing dependencies
 - A migrated Device and Metric schema
 - Repeatable development seed data covering varied telemetry and a no-data device
+- A validated telemetry ingestion endpoint backed by durable PostgreSQL writes
 
-APIs, dashboard features, tests, and the complete architecture documentation will be added incrementally in subsequent phases.
+Query APIs, dashboard features, and the complete architecture documentation will be added incrementally in subsequent phases.
 
 ## Local prerequisites
 
@@ -44,8 +45,26 @@ Quality checks:
 ```bash
 npm run lint
 npm run typecheck
+npm test
 npm run build
 ```
+
+## Telemetry ingestion
+
+`POST /api/metrics` accepts a JSON body with `deviceId`, finite numeric `power` and `temperature` values, and a timezone-aware ISO 8601 `timestamp`.
+
+```json
+{
+  "deviceId": "rack-a1",
+  "power": 612,
+  "temperature": 77,
+  "timestamp": "2025-10-09T14:00:00Z"
+}
+```
+
+A successful request returns `201 Created` with the persisted metric under `data`. Its database `BigInt` ID is represented as a decimal string, and both timestamps are ISO strings. Unknown device IDs are deliberately rejected with `404 DEVICE_NOT_FOUND`; ingestion never creates devices implicitly. Malformed JSON returns `400`, valid JSON that fails schema validation returns `422`, and unexpected persistence failures return a sanitized `500` response.
+
+The route waits for the Prisma insert to complete before returning `201`. This keeps acknowledgement tied to a durable PostgreSQL write without introducing a queue for the take-home scope.
 
 ## Database model
 
