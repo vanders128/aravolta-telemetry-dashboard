@@ -1,0 +1,111 @@
+import { describe, expect, it } from "vitest";
+
+import type { FleetDeviceDto, MetricDto } from "@/lib/telemetry/contracts";
+import {
+  ALL_LOCATIONS,
+  UNASSIGNED_LOCATION,
+  calculateFleetSummary,
+  filterFleetDevices,
+  getLocationOptions,
+} from "@/lib/telemetry/fleet-dashboard";
+
+function metric(overrides: Partial<MetricDto> = {}): MetricDto {
+  return {
+    id: "101",
+    deviceId: "rack-a1",
+    power: 600,
+    temperature: 80,
+    recordedAt: "2025-10-09T13:59:55.000Z",
+    receivedAt: "2025-10-09T13:59:56.000Z",
+    ...overrides,
+  };
+}
+
+function device(
+  id: string,
+  overrides: Partial<FleetDeviceDto> = {},
+): FleetDeviceDto {
+  return {
+    id,
+    name: `Device ${id}`,
+    location: "Data Hall A",
+    createdAt: "2025-01-01T00:00:00.000Z",
+    latestMetric: metric({ deviceId: id }),
+    ...overrides,
+  };
+}
+
+describe("fleet dashboard derivations", () => {
+  it("summarizes the full fleet and preserves legitimate zero readings", () => {
+    const devices = [
+      device("rack-a1"),
+      device("rack-b1", {
+        latestMetric: metric({
+          id: "102",
+          deviceId: "rack-b1",
+          power: 0,
+          temperature: 0,
+        }),
+      }),
+      device("rack-c1", { latestMetric: null }),
+    ];
+
+    expect(calculateFleetSummary(devices)).toEqual({
+      totalDevices: 3,
+      devicesWithTelemetry: 2,
+      aggregatePower: 600,
+      averageTemperature: 40,
+    });
+  });
+
+  it("uses null rather than a misleading zero or NaN when no telemetry exists", () => {
+    const summary = calculateFleetSummary([
+      device("rack-a1", { latestMetric: null }),
+      device("rack-b1", { latestMetric: null }),
+    ]);
+
+    expect(summary).toEqual({
+      totalDevices: 2,
+      devicesWithTelemetry: 0,
+      aggregatePower: null,
+      averageTemperature: null,
+    });
+  });
+
+  it.each([
+    ["  ALPHA ", "rack-a1"],
+    ["RACK-B1", "rack-b1"],
+    ["south", "rack-b1"],
+  ])("matches trimmed search %s against name, ID, or location", (query, id) => {
+    const devices = [
+      device("rack-a1", { name: "Alpha rack", location: "North plant" }),
+      device("rack-b1", { name: "Beta rack", location: "South plant" }),
+    ];
+
+    expect(filterFleetDevices(devices, query, ALL_LOCATIONS)).toEqual([
+      expect.objectContaining({ id }),
+    ]);
+  });
+
+  it("derives location options and combines location filtering with search", () => {
+    const devices = [
+      device("rack-a1", { name: "Alpha", location: "Data Hall B" }),
+      device("rack-a2", { name: "Archive", location: "Data Hall B" }),
+      device("rack-b1", { name: "Alpha", location: "Data Hall A" }),
+      device("rack-c1", { location: null }),
+    ];
+
+    expect(getLocationOptions(devices)).toEqual([
+      { label: "All locations", value: ALL_LOCATIONS },
+      { label: "Data Hall A", value: "location:Data Hall A" },
+      { label: "Data Hall B", value: "location:Data Hall B" },
+      { label: "Unassigned", value: UNASSIGNED_LOCATION },
+    ]);
+    expect(
+      filterFleetDevices(devices, "alpha", "location:Data Hall B"),
+    ).toEqual([expect.objectContaining({ id: "rack-a1" })]);
+    expect(filterFleetDevices(devices, "", UNASSIGNED_LOCATION)).toEqual([
+      expect.objectContaining({ id: "rack-c1" }),
+    ]);
+  });
+});

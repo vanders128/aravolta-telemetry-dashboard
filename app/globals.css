@@ -1,8 +1,24 @@
 :root {
-  --surface-canvas: #f4f6f8;
+  --surface-canvas: #f2f6f8;
+  --surface-raised: #ffffff;
+  --surface-subtle: #f7fafb;
+  --surface-accent-subtle: #edf7fa;
+  --surface-summary: #fbfeff;
+  --surface-table-header: #f1f7f9;
+  --surface-row-hover: #f0f7f9;
+  --surface-loading: #eaf1f4;
+  --border-subtle: #e3e8ed;
+  --border-default: #d7dee5;
+  --border-accent: #acd1da;
+  --border-control: #7c8c99;
   --text-primary: #17212b;
   --text-secondary: #52606d;
-  --text-muted: #6b7785;
+  --text-muted: #607080;
+  --text-placeholder: #687683;
+  --accent: #34718c;
+  --accent-strong: #205f7b;
+  --focus-ring: #34718c;
+  --focus-halo: rgb(52 113 140 / 20%);
   color-scheme: light;
 }
 
@@ -33,4 +49,8 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+::selection {
+  background: #d9edf2;
 }

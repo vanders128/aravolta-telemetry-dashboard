@@ -1,9 +1,10 @@
 import { deviceRepository } from "@/lib/server/repositories/device-repository";
 import { metricRepository } from "@/lib/server/repositories/metric-repository";
-import {
-  serializeMetric,
-  type MetricDto,
-} from "@/lib/server/serializers/metric";
+import { serializeMetric } from "@/lib/server/serializers/metric";
+import type {
+  FleetDeviceDto,
+  MetricDto,
+} from "@/lib/telemetry/contracts";
 import {
   createRecordedAtWindow,
   DEFAULT_TELEMETRY_WINDOW_SECONDS,
@@ -13,11 +14,6 @@ type DeviceDto = {
   id: string;
   name: string;
   location: string | null;
-};
-
-type FleetDeviceDto = DeviceDto & {
-  createdAt: string;
-  latestMetric: MetricDto | null;
 };
 
 type FoundMetricsResult = {

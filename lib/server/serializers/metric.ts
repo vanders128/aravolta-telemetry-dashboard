@@ -1,3 +1,5 @@
+import type { MetricDto } from "@/lib/telemetry/contracts";
+
 export type MetricRecord = {
   id: bigint;
   deviceId: string;
@@ -7,14 +9,7 @@ export type MetricRecord = {
   receivedAt: Date;
 };
 
-export type MetricDto = {
-  id: string;
-  deviceId: string;
-  power: number;
-  temperature: number;
-  recordedAt: string;
-  receivedAt: string;
-};
+export type { MetricDto } from "@/lib/telemetry/contracts";
 
 export function serializeMetric(metric: MetricRecord): MetricDto {
   return {

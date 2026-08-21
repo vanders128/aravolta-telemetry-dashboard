@@ -1,0 +1,591 @@
+.page {
+  min-height: 100vh;
+  padding: 1.5rem;
+}
+
+.shell {
+  width: min(90rem, 100%);
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 0.5rem 0 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.eyebrow,
+.stateEyebrow {
+  margin: 0 0 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--accent-strong);
+}
+
+.eyebrow::before {
+  width: 0.85rem;
+  height: 2px;
+  background: var(--accent);
+  content: "";
+}
+
+.header h1 {
+  margin: 0;
+  font-size: clamp(1.55rem, 3vw, 2rem);
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+
+.headerDescription {
+  margin: 0.4rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.snapshotTime {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border-accent);
+  border-left: 2px solid var(--accent);
+  border-radius: 0.375rem;
+  background: var(--surface-accent-subtle);
+  color: var(--accent-strong);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.snapshotTime time {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  padding-top: 1rem;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.summaryCard {
+  min-width: 0;
+  padding: 0.8rem 1rem 0.85rem;
+  border: 1px solid var(--border-subtle);
+  border-top: 2px solid var(--border-accent);
+  border-radius: 0.5rem;
+  background: var(--surface-summary);
+}
+
+.summaryCard dt {
+  min-height: 2.1em;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.summaryCard dd {
+  margin: 0;
+}
+
+.summaryValue {
+  margin-top: 0.35rem !important;
+  color: var(--text-primary);
+  font-size: clamp(1.15rem, 2.2vw, 1.45rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.summaryDetail {
+  margin-top: 0.22rem !important;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.fleetPanel {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  border-radius: 0.625rem;
+  background: var(--surface-raised);
+}
+
+.panelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.15rem 0.75rem;
+}
+
+.panelHeader h2 {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+.panelHeader p {
+  margin: 0.2rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.deviceTotal {
+  flex: 0 0 auto;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border-default);
+  border-radius: 0.375rem;
+  background: var(--surface-subtle);
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.filterBar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 1.15rem;
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-subtle);
+}
+
+.filterControls {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: flex-end;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.field {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.field:focus-within > span {
+  color: var(--accent-strong);
+}
+
+.field:first-child {
+  flex: 1 1 20rem;
+  max-width: 28rem;
+}
+
+.field:nth-child(2) {
+  flex: 0 1 13rem;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  min-height: 2.35rem;
+  border: 1px solid var(--border-control);
+  border-radius: 0.4rem;
+  outline: none;
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font-size: 0.84rem;
+}
+
+.field input {
+  padding: 0.45rem 0.7rem;
+}
+
+.field select {
+  padding: 0.45rem 2rem 0.45rem 0.65rem;
+}
+
+.field input::placeholder {
+  color: var(--text-placeholder);
+  opacity: 1;
+}
+
+.field input:focus-visible,
+.field select:focus-visible,
+.clearButton:focus-visible,
+.errorState button:focus-visible {
+  border-color: var(--focus-ring);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.tableRegion:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.clearButton,
+.errorState button {
+  min-height: 2.35rem;
+  border: 1px solid var(--border-control);
+  border-radius: 0.4rem;
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+.clearButton {
+  flex: 0 0 auto;
+  padding: 0.45rem 0.75rem;
+  border-color: var(--border-accent);
+  background: var(--surface-accent-subtle);
+  color: var(--accent-strong);
+}
+
+.clearButton:hover {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.errorState button {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.errorState button:hover {
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
+  color: #ffffff;
+}
+
+.resultCount {
+  flex: 0 0 auto;
+  margin: 0 0 0.55rem;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.tableRegion {
+  overflow-x: auto;
+  outline: none;
+}
+
+.deviceTable {
+  width: 100%;
+  min-width: 54rem;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.deviceTable th,
+.deviceTable td {
+  padding: 0.68rem 1.15rem;
+  border-bottom: 1px solid var(--border-subtle);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.deviceTable thead th {
+  border-bottom-color: var(--border-default);
+  background: var(--surface-table-header);
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.deviceTable thead th:first-child {
+  width: 24%;
+}
+
+.deviceTable thead th:nth-child(2) {
+  width: 19%;
+}
+
+.deviceTable thead th:nth-child(3),
+.deviceTable thead th:nth-child(4) {
+  width: 16%;
+}
+
+.deviceTable tbody th,
+.deviceTable tbody td {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.deviceTable tbody tr:last-child th,
+.deviceTable tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.deviceTable tbody tr:hover {
+  background: var(--surface-row-hover);
+}
+
+.deviceTable tbody tr {
+  transition: background-color 120ms ease;
+}
+
+.deviceName,
+.deviceId {
+  display: block;
+}
+
+.deviceName {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.deviceId {
+  overflow-wrap: anywhere;
+  margin-top: 0.16rem;
+  color: var(--text-muted);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+.numericColumn,
+.numericCell {
+  text-align: right !important;
+}
+
+.missingReading {
+  color: var(--text-muted) !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+}
+
+.numericCell {
+  color: var(--text-primary) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.deviceTable time {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.noTelemetry {
+  color: var(--text-muted) !important;
+}
+
+.noTelemetry span,
+.noTelemetry small {
+  display: block;
+}
+
+.noTelemetry span {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.noTelemetry small {
+  margin-top: 0.1rem;
+  font-size: 0.72rem;
+}
+
+.emptyState,
+.errorState {
+  padding: 3rem 1.25rem;
+  text-align: center;
+}
+
+.emptyState h3,
+.errorState h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.emptyState p,
+.errorState p {
+  margin: 0.45rem auto 0;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.errorState {
+  max-width: 34rem;
+  margin: 4rem auto;
+  border: 1px solid var(--border-default);
+  border-radius: 0.625rem;
+  background: var(--surface-raised);
+}
+
+.errorState button {
+  margin-top: 1rem;
+  padding: 0.45rem 0.9rem;
+}
+
+.loadingState {
+  padding-top: 1rem;
+}
+
+.loadingSummary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.loadingSummary span,
+.loadingTable span {
+  display: block;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-loading);
+}
+
+.loadingSummary span {
+  height: 5rem;
+  border-radius: 0.5rem;
+}
+
+.loadingTable {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 1rem;
+  padding: 1.2rem;
+  border: 1px solid var(--border-default);
+  border-radius: 0.625rem;
+  background: var(--surface-raised);
+}
+
+.loadingTable span {
+  height: 2.25rem;
+  border-radius: 0.3rem;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 64rem) {
+  .summaryGrid,
+  .loadingSummary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filterBar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .resultCount {
+    margin: 0;
+  }
+}
+
+@media (max-width: 42rem) {
+  .page {
+    padding: 1rem 0.75rem;
+  }
+
+  .header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+
+  .snapshotTime {
+    text-align: left;
+  }
+
+  .summaryGrid,
+  .loadingSummary {
+    gap: 0.5rem;
+  }
+
+  .summaryCard {
+    padding: 0.75rem;
+  }
+
+  .summaryCard dt {
+    overflow: visible;
+    white-space: normal;
+  }
+
+  .filterControls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .field:first-child,
+  .field:nth-child(2) {
+    flex-basis: auto;
+    max-width: none;
+  }
+
+  .clearButton {
+    align-self: flex-start;
+  }
+
+  .panelHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .deviceTotal {
+    align-self: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clearButton,
+  .errorState button,
+  .deviceTable tbody tr {
+    transition: none;
+  }
+}

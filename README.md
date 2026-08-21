@@ -16,8 +16,9 @@ The project currently includes:
 - Repeatable development seed data covering varied telemetry and a no-data device
 - A validated telemetry ingestion endpoint backed by durable PostgreSQL writes
 - Device, recent-metric, and full live-snapshot query endpoints
+- A responsive fleet dashboard backed exclusively by the device query API
 
-Dashboard features and the complete architecture documentation will be added incrementally in subsequent phases.
+Selected-device live charts, alerting, and the complete architecture documentation will be added incrementally in subsequent phases.
 
 ## Local prerequisites
 
@@ -76,6 +77,12 @@ The route waits for the Prisma insert to complete before returning `201`. This k
 Recent windows use `recordedAt` because charts represent when a device produced each reading. `receivedAt` remains available to inspect ingestion delay. All query responses use `Cache-Control: no-store` so polling cannot reuse stale telemetry.
 
 Alert and reporting-state fields will be added with the centralized demonstration rules in a later phase; the query layer does not invent placeholder status values.
+
+## Fleet dashboard
+
+The fleet view fetches `GET /api/devices` once when it mounts and provides a manual retry after failures. Its summary cards cover the complete returned fleet: total devices, devices with a latest reading, the sum of latest power readings, and the average of latest temperatures. Search matches device name, ID, and location; the location filter options are derived from the response. Devices without telemetry remain visible but are excluded from power and temperature calculations.
+
+The assignment does not define telemetry units. For demonstration, the UI presents power as watts and temperature as degrees Fahrenheit based on the sample values. Those assumptions live only in `lib/telemetry/display-config.ts`; they are not encoded in the database or API domain model.
 
 ## Database model
 
