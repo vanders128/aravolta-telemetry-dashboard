@@ -53,7 +53,9 @@ Open [http://localhost:3000](http://localhost:3000). To add live readings, leave
 npm run simulate
 ```
 
-The simulator targets `http://localhost:3000` by default. `TELEMETRY_API_BASE_URL` can override that base URL.
+The simulator is a development/demo producer that runs separately from Next.js. It targets `http://localhost:3000` by default; `TELEMETRY_API_BASE_URL` can override that base URL.
+
+About every five seconds it sends bounded readings through `POST /api/metrics`, exercising the real validation and PostgreSQL persistence path while intentionally skipping the Stale and No Data devices. It does not use Prisma or connect directly to PostgreSQL, and it stops with Ctrl+C. The live charts, fleet states, and summaries update as those requests are polled.
 
 ## Demo
 

@@ -724,8 +724,15 @@
   text-overflow: ellipsis;
 }
 
+.detailReadings > div:last-child dd {
+  overflow: visible;
+  text-overflow: clip;
+}
+
 .detailReadings time {
-  white-space: nowrap;
+  display: block;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .snapshotMeta {
