@@ -36,6 +36,8 @@ A full-stack dashboard and API for ingesting, persisting, and monitoring power a
 ### Run locally
 
 ```bash
+git clone https://github.com/vanders128/aravolta-telemetry-dashboard.git
+cd aravolta-telemetry-dashboard
 npm install
 cp .env.example .env
 docker compose up -d
@@ -434,4 +436,4 @@ git diff --check
 
 Aravolta explicitly permitted AI-assisted development. AI tools supported implementation, design exploration, code review, test-case generation, and documentation review. The candidate reviewed and validated the architecture, code, tests, and tradeoffs.
 
-Suggestions were deliberately rejected when they added complexity without solving the demonstrated problem, including premature distributed infrastructure, WebSockets when polling satisfies the requirement, `(deviceId, recordedAt)` uniqueness without source-event identity, and unnecessary client state/query dependencies.
+I intentionally kept the solution focused on the take-home requirements. I chose polling over WebSockets, direct PostgreSQL writes over premature distributed infrastructure, avoided timestamp-based uniqueness without a stable source event ID, and kept client-side dependencies minimal.
